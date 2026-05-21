@@ -482,14 +482,14 @@ impl Redfish for Bmc {
             use serde_json::Value;
 
             let attributes: HashMap<String, Value> = HashMap::from([
-                ("TER001".to_string(), "Enabled".into()), // Console Redirection
-                ("TER010".to_string(), "Enabled".into()), // Console Redirection EMS
-                ("TER06B".to_string(), "COM1".into()),    // Out-of-Band Mgmt Port
-                ("TER0021".to_string(), "115200".into()), // Bits per second
-                ("TER0020".to_string(), "115200".into()), // Bits per second EMS
-                ("TER012".to_string(), "VT100Plus".into()), // Terminal Type
-                ("TER011".to_string(), "VT-UTF8".into()), // Terminal Type EMS
-                ("TER05D".to_string(), "None".into()),    // Flow Control
+                ("TER001".to_string(), "Enabled".into()),    // Console Redirection
+                ("TER010".to_string(), "Enabled".into()),    // Console Redirection EMS
+                ("TER06B".to_string(), "COM1/SOL".into()),   // Out-of-Band Mgmt Port
+                ("TER021".to_string(), "115200".into()),     // Bits per second
+                ("TER020".to_string(), "115200".into()),     // Bits per second EMS
+                ("TER012".to_string(), "VT100Plus".into()),  // Terminal Type
+                ("TER011".to_string(), "VT-UTF8".into()),    // Terminal Type EMS
+                ("TER05D".to_string(), "None".into()),       // Flow Control
             ]);
 
             self.set_bios(attributes).await
@@ -508,9 +508,9 @@ impl Redfish for Bmc {
             let expected = vec![
                 ("TER001", "Enabled", "Disabled"),
                 ("TER010", "Enabled", "Disabled"),
-                ("TER06B", "COM1", "any"),
-                ("TER0021", "115200", "any"),
-                ("TER0020", "115200", "any"),
+                ("TER06B", "COM1/SOL", "any"),
+                ("TER021", "115200", "any"),
+                ("TER020", "115200", "any"),
                 ("TER012", "VT100Plus", "any"),
                 ("TER011", "VT-UTF8", "any"),
                 ("TER05D", "None", "any"),
@@ -596,7 +596,9 @@ impl Redfish for Bmc {
 
     fn clear_tpm<'a>(&'a self) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
         Box::pin(async move {
-            self.set_bios(HashMap::from([("TCG006".to_string(), "TPM Clear".into())]))
+            // Giga R263-ZG0: TCG006 is "TCM State" (Disabled/Enabled), not TPM.
+            // The pending-operation slot that accepts "TPM Clear" is TCG008.
+            self.set_bios(HashMap::from([("TCG008".to_string(), "TPM Clear".into())]))
                 .await
         })
     }
@@ -1217,18 +1219,20 @@ impl Bmc {
     }
 
     /// Get the BIOS attributes for machine setup.
+    //
+    // Dropped vs. ami::machine_setup_attrs (keys absent on Giga Computing R263-ZG0):
+    //   LEM0001     — PXE retry count; no LEM* keys on this BMC
+    //   FBO001      — Boot Mode Select; platform appears UEFI-only (only FBO201–205 UEFI entries exist)
+    //   EndlessBoot — Infinite Boot; not exposed
     fn machine_setup_attrs(&self) -> HashMap<String, serde_json::Value> {
         HashMap::from([
-            ("VMXEN".to_string(), "Enable".into()), // VMX (Intel Virtualization)
-            ("PCIS007".to_string(), "Enabled".into()), // SR-IOV Support
-            ("LEM0001".to_string(), 3.into()),      // PXE retry count (remove on future FW update)
-            ("NWSK000".to_string(), "Enabled".into()), // Network Stack
+            ("CPU005".to_string(), "Enabled".into()),   // Enable/disable CPU Virtualization
+            ("PCIS007".to_string(), "Enabled".into()),  // SR-IOV Support
+            ("NWSK000".to_string(), "Enabled".into()),  // Network Stack
             ("NWSK001".to_string(), "Disabled".into()), // IPv4 PXE Support
-            ("NWSK006".to_string(), "Enabled".into()), // IPv4 HTTP Support
+            ("NWSK006".to_string(), "Enabled".into()),  // IPv4 HTTP Support
             ("NWSK002".to_string(), "Disabled".into()), // IPv6 PXE Support
             ("NWSK007".to_string(), "Disabled".into()), // IPv6 HTTP Support
-            ("FBO001".to_string(), "UEFI".into()),  // Boot Mode Select
-            ("EndlessBoot".to_string(), "Enabled".into()), // Infinite Boot
         ])
     }
 
