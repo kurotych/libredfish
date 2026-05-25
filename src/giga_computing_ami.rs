@@ -39,46 +39,8 @@ impl Bmc {
     pub fn new(s: RedfishStandard) -> Result<Bmc, RedfishError> {
         Ok(Bmc { s })
     }
-
-    /// LenovoAMI-specific lockdown status via OEM ConfigBMC endpoint.
-    async fn lockdown_status_lenovo_ami(&self) -> Result<Status, RedfishError> {
-        const LOCKDOWN_FIELDS: &[&str] = &[
-            "LockoutHostControl",
-            "LockoutBiosVariableWriteMode",
-            "LockdownBiosSettingsChange",
-            "LockdownBiosUpgradeDowngrade",
-        ];
-
-        let (_status, body): (_, serde_json::Value) =
-            self.s.client.get("Managers/Self/Oem/ConfigBMC").await?;
-
-        let values: Vec<&str> = LOCKDOWN_FIELDS
-            .iter()
-            .map(|key| body.get(key).and_then(|v| v.as_str()).unwrap_or("unknown"))
-            .collect();
-
-        let message = LOCKDOWN_FIELDS
-            .iter()
-            .zip(&values)
-            .map(|(k, v)| format!("{k}={v}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let is_locked = values.iter().all(|&v| v == "Enable");
-        let is_unlocked = values.iter().all(|&v| v == "Disable");
-
-        Ok(Status {
-            message,
-            status: if is_locked {
-                StatusInternal::Enabled
-            } else if is_unlocked {
-                StatusInternal::Disabled
-            } else {
-                StatusInternal::Partial
-            },
-        })
-    }
 }
+
 impl Redfish for Bmc {
     fn change_username<'a>(
         &'a self,
@@ -345,14 +307,14 @@ impl Redfish for Bmc {
                 }
             }
 
-            // let lockdown = self.lockdown_status().await?;
-            // if !lockdown.is_fully_enabled() {
-            //     diffs.push(MachineSetupDiff {
-            //         key: "lockdown".to_string(),
-            //         expected: "Enabled".to_string(),
-            //         actual: lockdown.status.to_string(),
-            //     });
-            // }
+            let lockdown = self.lockdown_status().await?;
+            if !lockdown.is_fully_enabled() {
+                diffs.push(MachineSetupDiff {
+                    key: "lockdown".to_string(),
+                    expected: "Enabled".to_string(),
+                    actual: lockdown.status.to_string(),
+                });
+            }
 
             Ok(MachineSetupStatus {
                 is_done: diffs.is_empty(),
@@ -389,43 +351,17 @@ impl Redfish for Bmc {
         })
     }
 
-    /// AMI lockdown - controls KCS access, USB support, and Host Interface.
-    /// On LenovoAMI, uses the OEM ConfigBMC endpoint to control host lockout,
-    /// BIOS variable write, BIOS settings change, and BIOS upgrade/downgrade.
+    /// Giga Computing R263-ZG0 lockdown — HostInterfaces only.
+    ///
+    /// See `lockdown_status` for the platform limitation: KCS and USB lockdown
+    /// aren't exposed via Redfish on Megarac/AST2600, so this only closes the
+    /// host→BMC USB-NIC channel.
     fn lockdown<'a>(
         &'a self,
         target: EnabledDisabled,
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
         Box::pin(async move {
-            use EnabledDisabled::*;
-            if self.s.vendor == Some(RedfishVendor::LenovoAMI) {
-                let value = match target {
-                    Enabled => "Enable",
-                    Disabled => "Disable",
-                };
-                let body = HashMap::from([
-                    ("LockoutHostControl", value),
-                    ("LockoutBiosVariableWriteMode", value),
-                    ("LockdownBiosSettingsChange", value),
-                    ("LockdownBiosUpgradeDowngrade", value),
-                ]);
-                return self
-                    .s
-                    .client
-                    .post("Managers/Self/Oem/ConfigBMC", body)
-                    .await
-                    .map(|_| ());
-            }
-
-            let (kcsacp, usb, hi_enabled) = match target {
-                Enabled => ("Deny All", "Disabled", false),
-                Disabled => ("Allow All", "Enabled", true),
-            };
-            self.set_bios(HashMap::from([
-                ("KCSACP".to_string(), kcsacp.into()),
-                ("USB000".to_string(), usb.into()),
-            ]))
-            .await?;
+            let hi_enabled = target == EnabledDisabled::Disabled;
             let hi_body = HashMap::from([("InterfaceEnabled", hi_enabled)]);
             self.s
                 .client
@@ -434,20 +370,15 @@ impl Redfish for Bmc {
         })
     }
 
-    /// AMI lockdown status - checks KCS access, USB support, and Host Interface.
-    /// On LenovoAMI, reads the OEM ConfigBMC endpoint instead.
+    /// Giga Computing R263-ZG0 lockdown status — HostInterfaces only.
+    ///
+    /// KCS access is not configurable via Redfish on Megarac/AST2600 — it must
+    /// be set at the BMC firmware level (e.g. `ipmitool channel setaccess`) at
+    /// provisioning time, and we can't read its state from here either. So a
+    /// "fully Enabled" result from this function only means HostInterfaces is
+    /// closed; KCS may still be open and we have no way to know.
     fn lockdown_status<'a>(&'a self) -> crate::RedfishFuture<'a, Result<Status, RedfishError>> {
         Box::pin(async move {
-            if self.s.vendor == Some(RedfishVendor::LenovoAMI) {
-                return self.lockdown_status_lenovo_ami().await;
-            }
-
-            let bios = self.s.bios().await?;
-            let url = format!("Systems/{}/Bios", self.s.system_id());
-            let attrs = jsonmap::get_object(&bios, "Attributes", &url)?;
-            let kcsacp = jsonmap::get_str(attrs, "KCSACP", "Bios Attributes")?;
-            let usb000 = jsonmap::get_str(attrs, "USB000", "Bios Attributes")?;
-
             let hi_url = "Managers/Self/HostInterfaces/Self";
             let (_status, hi): (_, serde_json::Value) = self.s.client.get(hi_url).await?;
             let hi_enabled = hi
@@ -455,22 +386,14 @@ impl Redfish for Bmc {
                 .and_then(|v| v.as_bool())
                 .unwrap_or(true);
 
-            let message = format!(
-                "kcs_access={}, usb_support={}, host_interface={}",
-                kcsacp, usb000, hi_enabled
-            );
-
-            let is_locked = kcsacp == "Deny All" && usb000 == "Disabled" && !hi_enabled;
-            let is_unlocked = kcsacp == "Allow All" && usb000 == "Enabled" && hi_enabled;
+            let message = format!("host_interface={}", hi_enabled);
 
             Ok(Status {
                 message,
-                status: if is_locked {
+                status: if !hi_enabled {
                     StatusInternal::Enabled
-                } else if is_unlocked {
-                    StatusInternal::Disabled
                 } else {
-                    StatusInternal::Partial
+                    StatusInternal::Disabled
                 },
             })
         })
