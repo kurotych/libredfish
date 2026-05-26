@@ -44,32 +44,35 @@ impl Bmc {
 impl Redfish for Bmc {
     fn change_username<'a>(
         &'a self,
-        old_name: &'a str,
-        new_name: &'a str,
+        _old_name: &'a str,
+        _new_name: &'a str,
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
-        Box::pin(async move { self.s.change_username(old_name, new_name).await })
+        todo!()
+        // Box::pin(async move { self.s.change_username(old_name, new_name).await })
     }
 
     fn change_password<'a>(
         &'a self,
-        user: &'a str,
-        new: &'a str,
+        _user: &'a str,
+        _new: &'a str,
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
-        Box::pin(async move { self.s.change_password(user, new).await })
+        todo!()
+        // Box::pin(async move { self.s.change_password(user, new).await })
     }
 
     /// AMI BMC requires If-Match header for password changes
     fn change_password_by_id<'a>(
         &'a self,
-        account_id: &'a str,
-        new_pass: &'a str,
+        _account_id: &'a str,
+        _new_pass: &'a str,
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
-        Box::pin(async move {
-            let url = format!("AccountService/Accounts/{}", account_id);
-            let mut data = HashMap::new();
-            data.insert("Password", new_pass);
-            self.s.client.patch_with_if_match(&url, data).await
-        })
+        todo!()
+        // Box::pin(async move {
+        //     let url = format!("AccountService/Accounts/{}", account_id);
+        //     let mut data = HashMap::new();
+        //     data.insert("Password", new_pass);
+        //     self.s.client.patch_with_if_match(&url, data).await
+        // })
     }
 
     fn get_accounts<'a>(
@@ -89,9 +92,10 @@ impl Redfish for Bmc {
 
     fn delete_user<'a>(
         &'a self,
-        username: &'a str,
+        _username: &'a str,
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
-        Box::pin(async move { self.s.delete_user(username).await })
+        todo!()
+        // Box::pin(async move { self.s.delete_user(username).await })
     }
 
     fn get_firmware<'a>(
@@ -736,21 +740,23 @@ impl Redfish for Bmc {
     /// AMI uses BIOS attribute SETUP001 for Administrator Password
     fn change_uefi_password<'a>(
         &'a self,
-        current_uefi_password: &'a str,
-        new_uefi_password: &'a str,
+        _current_uefi_password: &'a str,
+        _new_uefi_password: &'a str,
     ) -> crate::RedfishFuture<'a, Result<Option<String>, RedfishError>> {
-        Box::pin(async move {
-            self.s
-                .change_bios_password(UEFI_PASSWORD_NAME, current_uefi_password, new_uefi_password)
-                .await
-        })
+        todo!()
+        // Box::pin(async move {
+        //     self.s
+        //         .change_bios_password(UEFI_PASSWORD_NAME, current_uefi_password, new_uefi_password)
+        //         .await
+        // })
     }
 
     fn clear_uefi_password<'a>(
         &'a self,
-        current_uefi_password: &'a str,
+        _current_uefi_password: &'a str,
     ) -> crate::RedfishFuture<'a, Result<Option<String>, RedfishError>> {
-        Box::pin(async move { self.change_uefi_password(current_uefi_password, "").await })
+        todo!()
+        // Box::pin(async move { self.change_uefi_password(current_uefi_password, "").await })
     }
 
     fn get_job_state<'a>(
