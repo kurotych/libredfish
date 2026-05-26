@@ -29,7 +29,7 @@ use crate::{
 };
 
 /// AMI uses BIOS attribute SETUP001 for Administrator Password (UEFI password)
-const UEFI_PASSWORD_NAME: &str = "SETUP001";
+// const UEFI_PASSWORD_NAME: &str = "SETUP001";
 
 pub struct Bmc {
     s: RedfishStandard,
@@ -78,6 +78,7 @@ impl Redfish for Bmc {
     fn get_accounts<'a>(
         &'a self,
     ) -> crate::RedfishFuture<'a, Result<Vec<ManagerAccount>, RedfishError>> {
+        // +
         Box::pin(async move { self.s.get_accounts().await })
     }
 
@@ -102,12 +103,14 @@ impl Redfish for Bmc {
         &'a self,
         id: &'a str,
     ) -> crate::RedfishFuture<'a, Result<SoftwareInventory, RedfishError>> {
+        // +
         Box::pin(async move { self.s.get_firmware(id).await })
     }
 
     fn get_software_inventories<'a>(
         &'a self,
     ) -> crate::RedfishFuture<'a, Result<Vec<String>, RedfishError>> {
+        // +
         Box::pin(async move { self.s.get_software_inventories().await })
     }
 
@@ -120,6 +123,7 @@ impl Redfish for Bmc {
     }
 
     fn get_power_state<'a>(&'a self) -> crate::RedfishFuture<'a, Result<PowerState, RedfishError>> {
+        // +
         Box::pin(async move { self.s.get_power_state().await })
     }
 

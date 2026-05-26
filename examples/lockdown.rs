@@ -9,7 +9,7 @@
 use std::time::Duration;
 
 use libredfish::reqwest::Url;
-use libredfish::{Endpoint, EnabledDisabled, RedfishClientPool};
+use libredfish::{EnabledDisabled, Endpoint, RedfishClientPool};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
