@@ -130,26 +130,32 @@ impl Redfish for Bmc {
     fn get_service_root<'a>(
         &'a self,
     ) -> crate::RedfishFuture<'a, Result<ServiceRoot, RedfishError>> {
+        // +
         Box::pin(async move { self.s.get_service_root().await })
     }
 
     fn get_systems<'a>(&'a self) -> crate::RedfishFuture<'a, Result<Vec<String>, RedfishError>> {
+        // + 
         Box::pin(async move { self.s.get_systems().await })
     }
 
     fn get_system<'a>(&'a self) -> crate::RedfishFuture<'a, Result<ComputerSystem, RedfishError>> {
+        // +
         Box::pin(async move { self.s.get_system().await })
     }
 
     fn get_managers<'a>(&'a self) -> crate::RedfishFuture<'a, Result<Vec<String>, RedfishError>> {
+        // + 
         Box::pin(async move { self.s.get_managers().await })
     }
 
     fn get_manager<'a>(&'a self) -> crate::RedfishFuture<'a, Result<Manager, RedfishError>> {
+        // +
         Box::pin(async move { self.s.get_manager().await })
     }
 
     fn get_secure_boot<'a>(&'a self) -> crate::RedfishFuture<'a, Result<SecureBoot, RedfishError>> {
+        // +
         Box::pin(async move { self.s.get_secure_boot().await })
     }
 
