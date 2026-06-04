@@ -48,7 +48,10 @@ async fn main() -> anyhow::Result<()> {
     println!("id               = {}", manager.id);
     println!("name             = {}", manager.name);
     println!("manager_type     = {}", manager.manager_type);
-    println!("model            = {}", manager.model.as_deref().unwrap_or("-"));
+    println!(
+        "model            = {}",
+        manager.model.as_deref().unwrap_or("-")
+    );
     println!("firmware_version = {}", manager.firmware_version);
     println!("uuid             = {}", manager.uuid);
     println!("status.state     = {}", manager.status.state);

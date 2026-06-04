@@ -29,7 +29,7 @@ use crate::{
 };
 
 /// AMI uses BIOS attribute SETUP001 for Administrator Password (UEFI password)
-// const UEFI_PASSWORD_NAME: &str = "SETUP001";
+const UEFI_PASSWORD_NAME: &str = "SETUP001";
 
 pub struct Bmc {
     s: RedfishStandard,
@@ -44,41 +44,37 @@ impl Bmc {
 impl Redfish for Bmc {
     fn change_username<'a>(
         &'a self,
-        _old_name: &'a str,
-        _new_name: &'a str,
+        old_name: &'a str,
+        new_name: &'a str,
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
-        todo!()
-        // Box::pin(async move { self.s.change_username(old_name, new_name).await })
+        Box::pin(async move { self.s.change_username(old_name, new_name).await })
     }
 
     fn change_password<'a>(
         &'a self,
-        _user: &'a str,
-        _new: &'a str,
+        user: &'a str,
+        new: &'a str,
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
-        todo!()
-        // Box::pin(async move { self.s.change_password(user, new).await })
+        Box::pin(async move { self.s.change_password(user, new).await })
     }
 
     /// AMI BMC requires If-Match header for password changes
     fn change_password_by_id<'a>(
         &'a self,
-        _account_id: &'a str,
-        _new_pass: &'a str,
+        account_id: &'a str,
+        new_pass: &'a str,
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
-        todo!()
-        // Box::pin(async move {
-        //     let url = format!("AccountService/Accounts/{}", account_id);
-        //     let mut data = HashMap::new();
-        //     data.insert("Password", new_pass);
-        //     self.s.client.patch_with_if_match(&url, data).await
-        // })
+        Box::pin(async move {
+            let url = format!("AccountService/Accounts/{}", account_id);
+            let mut data = HashMap::new();
+            data.insert("Password", new_pass);
+            self.s.client.patch_with_if_match(&url, data).await
+        })
     }
 
     fn get_accounts<'a>(
         &'a self,
     ) -> crate::RedfishFuture<'a, Result<Vec<ManagerAccount>, RedfishError>> {
-        // +
         Box::pin(async move { self.s.get_accounts().await })
     }
 
@@ -93,24 +89,21 @@ impl Redfish for Bmc {
 
     fn delete_user<'a>(
         &'a self,
-        _username: &'a str,
+        username: &'a str,
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
-        todo!()
-        // Box::pin(async move { self.s.delete_user(username).await })
+        Box::pin(async move { self.s.delete_user(username).await })
     }
 
     fn get_firmware<'a>(
         &'a self,
         id: &'a str,
     ) -> crate::RedfishFuture<'a, Result<SoftwareInventory, RedfishError>> {
-        // +
         Box::pin(async move { self.s.get_firmware(id).await })
     }
 
     fn get_software_inventories<'a>(
         &'a self,
     ) -> crate::RedfishFuture<'a, Result<Vec<String>, RedfishError>> {
-        // +
         Box::pin(async move { self.s.get_software_inventories().await })
     }
 
@@ -123,39 +116,32 @@ impl Redfish for Bmc {
     }
 
     fn get_power_state<'a>(&'a self) -> crate::RedfishFuture<'a, Result<PowerState, RedfishError>> {
-        // +
         Box::pin(async move { self.s.get_power_state().await })
     }
 
     fn get_service_root<'a>(
         &'a self,
     ) -> crate::RedfishFuture<'a, Result<ServiceRoot, RedfishError>> {
-        // +
         Box::pin(async move { self.s.get_service_root().await })
     }
 
     fn get_systems<'a>(&'a self) -> crate::RedfishFuture<'a, Result<Vec<String>, RedfishError>> {
-        // + 
         Box::pin(async move { self.s.get_systems().await })
     }
 
     fn get_system<'a>(&'a self) -> crate::RedfishFuture<'a, Result<ComputerSystem, RedfishError>> {
-        // +
         Box::pin(async move { self.s.get_system().await })
     }
 
     fn get_managers<'a>(&'a self) -> crate::RedfishFuture<'a, Result<Vec<String>, RedfishError>> {
-        // + 
         Box::pin(async move { self.s.get_managers().await })
     }
 
     fn get_manager<'a>(&'a self) -> crate::RedfishFuture<'a, Result<Manager, RedfishError>> {
-        // +
         Box::pin(async move { self.s.get_manager().await })
     }
 
     fn get_secure_boot<'a>(&'a self) -> crate::RedfishFuture<'a, Result<SecureBoot, RedfishError>> {
-        // +
         Box::pin(async move { self.s.get_secure_boot().await })
     }
 
@@ -750,23 +736,21 @@ impl Redfish for Bmc {
     /// AMI uses BIOS attribute SETUP001 for Administrator Password
     fn change_uefi_password<'a>(
         &'a self,
-        _current_uefi_password: &'a str,
-        _new_uefi_password: &'a str,
+        current_uefi_password: &'a str,
+        new_uefi_password: &'a str,
     ) -> crate::RedfishFuture<'a, Result<Option<String>, RedfishError>> {
-        todo!()
-        // Box::pin(async move {
-        //     self.s
-        //         .change_bios_password(UEFI_PASSWORD_NAME, current_uefi_password, new_uefi_password)
-        //         .await
-        // })
+        Box::pin(async move {
+            self.s
+                .change_bios_password(UEFI_PASSWORD_NAME, current_uefi_password, new_uefi_password)
+                .await
+        })
     }
 
     fn clear_uefi_password<'a>(
         &'a self,
-        _current_uefi_password: &'a str,
+        current_uefi_password: &'a str,
     ) -> crate::RedfishFuture<'a, Result<Option<String>, RedfishError>> {
-        todo!()
-        // Box::pin(async move { self.change_uefi_password(current_uefi_password, "").await })
+        Box::pin(async move { self.change_uefi_password(current_uefi_password, "").await })
     }
 
     fn get_job_state<'a>(

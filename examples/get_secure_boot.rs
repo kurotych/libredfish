@@ -48,7 +48,10 @@ async fn main() -> anyhow::Result<()> {
     println!("id                       = {}", sb.id);
     println!("name                     = {}", sb.name);
     println!("secure_boot_enable       = {:?}", sb.secure_boot_enable);
-    println!("secure_boot_current_boot = {:?}", sb.secure_boot_current_boot);
+    println!(
+        "secure_boot_current_boot = {:?}",
+        sb.secure_boot_current_boot
+    );
     println!("secure_boot_mode         = {:?}", sb.secure_boot_mode);
 
     Ok(())

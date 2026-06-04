@@ -48,19 +48,31 @@ async fn main() -> anyhow::Result<()> {
     println!("redfish_version = {}", sr.redfish_version);
     println!("product         = {}", sr.product.as_deref().unwrap_or("-"));
     println!("vendor          = {}", sr.vendor.as_deref().unwrap_or("-"));
-    println!("vendor_string   = {}", sr.vendor_string().as_deref().unwrap_or("-"));
+    println!(
+        "vendor_string   = {}",
+        sr.vendor_string().as_deref().unwrap_or("-")
+    );
     println!("uuid            = {}", sr.uuid.as_deref().unwrap_or("-"));
     println!(
         "systems         = {}",
-        sr.systems.as_ref().map(|o| o.odata_id.as_str()).unwrap_or("-")
+        sr.systems
+            .as_ref()
+            .map(|o| o.odata_id.as_str())
+            .unwrap_or("-")
     );
     println!(
         "managers        = {}",
-        sr.managers.as_ref().map(|o| o.odata_id.as_str()).unwrap_or("-")
+        sr.managers
+            .as_ref()
+            .map(|o| o.odata_id.as_str())
+            .unwrap_or("-")
     );
     println!(
         "chassis         = {}",
-        sr.chassis.as_ref().map(|o| o.odata_id.as_str()).unwrap_or("-")
+        sr.chassis
+            .as_ref()
+            .map(|o| o.odata_id.as_str())
+            .unwrap_or("-")
     );
     println!(
         "account_service = {}",
@@ -71,7 +83,10 @@ async fn main() -> anyhow::Result<()> {
     );
     println!(
         "tasks           = {}",
-        sr.tasks.as_ref().map(|o| o.odata_id.as_str()).unwrap_or("-")
+        sr.tasks
+            .as_ref()
+            .map(|o| o.odata_id.as_str())
+            .unwrap_or("-")
     );
 
     Ok(())
