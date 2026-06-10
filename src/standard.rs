@@ -1297,6 +1297,10 @@ impl RedfishStandard {
             RedfishVendor::AMI => {
                 if self.system_id == "DGX" && self.manager_id == "BMC" {
                     Ok(Box::new(crate::nvidia_viking::Bmc::new(self.clone())?))
+                } else if self.is_giga_computing().await {
+                    debug!("BMC Vendor refined: AMI -> GigaComputingAMI");
+                    self.vendor = Some(RedfishVendor::GigaComputingAMI);
+                    Ok(Box::new(crate::giga_computing_ami::Bmc::new(self.clone())?))
                 } else {
                     Ok(Box::new(crate::ami::Bmc::new(self.clone())?))
                 }
@@ -1305,6 +1309,9 @@ impl RedfishStandard {
             RedfishVendor::Hpe => Ok(Box::new(crate::hpe::Bmc::new(self.clone())?)),
             RedfishVendor::Lenovo => Ok(Box::new(crate::lenovo::Bmc::new(self.clone())?)),
             RedfishVendor::LenovoAMI => Ok(Box::new(crate::ami::Bmc::new(self.clone())?)),
+            RedfishVendor::GigaComputingAMI => {
+                Ok(Box::new(crate::giga_computing_ami::Bmc::new(self.clone())?))
+            }
             RedfishVendor::NvidiaDpu => Ok(Box::new(crate::nvidia_dpu::Bmc::new(self.clone())?)),
             RedfishVendor::NvidiaGBx00 => {
                 Ok(Box::new(crate::nvidia_gbx00::Bmc::new(self.clone())?))
@@ -1323,6 +1330,23 @@ impl RedfishStandard {
                 Ok(Box::new(crate::delta_powershelf::Bmc::new(self.clone())?))
             }
             _ => Ok(Box::new(self.clone())),
+        }
+    }
+
+    /// Distinguish a Giga Computing AMI BMC from a generic AMI BMC by reading
+    /// the ComputerSystem `Manufacturer` field. Failures are treated as not-Giga
+    /// so detection never blocks the dispatch path.
+    async fn is_giga_computing(&self) -> bool {
+        match self.get_system().await {
+            Ok(sys) => sys
+                .manufacturer
+                .as_deref()
+                .map(|m| m.eq_ignore_ascii_case("Giga Computing"))
+                .unwrap_or(false),
+            Err(e) => {
+                debug!("is_giga_computing: failed to fetch system: {e}");
+                false
+            }
         }
     }
 
