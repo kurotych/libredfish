@@ -4,7 +4,7 @@ use crate::{
     jsonmap,
     model::{
         account_service::ManagerAccount,
-        boot::{BootSourceOverrideEnabled, BootSourceOverrideTarget},
+        boot::{BootOverride, BootSourceOverrideEnabled, BootSourceOverrideTarget},
         certificate::Certificate,
         chassis::{Assembly, Chassis, NetworkAdapter},
         component_integrity::ComponentIntegrities,
@@ -267,7 +267,7 @@ impl Redfish for Bmc {
     /// 3. BIOS settings
     fn machine_setup<'a>(
         &'a self,
-        _boot_interface_mac: Option<&'a str>,
+        _boot_interface: Option<crate::BootInterfaceRef<'a>>,
         _bios_profiles: &'a HashMap<
             RedfishVendor,
             HashMap<String, HashMap<BiosProfileType, HashMap<String, serde_json::Value>>>,
@@ -290,9 +290,17 @@ impl Redfish for Bmc {
     /// Check machine setup status for AMI BMC.
     fn machine_setup_status<'a>(
         &'a self,
-        boot_interface_mac: Option<&'a str>,
+        boot_interface: Option<crate::BootInterfaceRef<'a>>,
     ) -> crate::RedfishFuture<'a, Result<MachineSetupStatus, RedfishError>> {
         Box::pin(async move {
+            // Resolve `InterfaceId` to a MAC via the Redfish-standard
+            // EthernetInterface resource.
+            let resolved_mac = match boot_interface {
+                Some(b) => Some(crate::resolve_boot_interface_mac(self, b).await?),
+                None => None,
+            };
+            let boot_interface_mac = resolved_mac.as_deref();
+
             let mut diffs = self.diff_bios_bmc_attr().await?;
 
             if let Some(mac) = boot_interface_mac {
@@ -325,7 +333,7 @@ impl Redfish for Bmc {
 
     fn is_bios_setup<'a>(
         &'a self,
-        _boot_interface_mac: Option<&'a str>,
+        _boot_interface: Option<crate::BootInterfaceRef<'a>>,
     ) -> crate::RedfishFuture<'a, Result<bool, RedfishError>> {
         Box::pin(async move {
             let diffs = self.diff_bios_bmc_attr().await?;
@@ -503,6 +511,40 @@ impl Redfish for Bmc {
             };
             self.set_boot_order(alias).await
         })
+    }
+
+    /// AMI requires patching `/Systems/{id}` (NOT `/SD`) with an `If-Match` header.
+    fn set_boot_override<'a>(
+        &'a self,
+        _settings: BootOverride,
+    ) -> crate::RedfishFuture<'a, Result<Option<String>, RedfishError>> {
+        unimplemented!()
+        // Box::pin(async move {
+        //     let mut boot_data: HashMap<String, serde_json::Value> = HashMap::new();
+        //     boot_data.insert(
+        //         "BootSourceOverrideTarget".to_string(),
+        //         settings.target.to_string().into(),
+        //     );
+        //     boot_data.insert(
+        //         "BootSourceOverrideEnabled".to_string(),
+        //         settings.enabled.to_string().into(),
+        //     );
+        //     // AMI BMCs default to UEFI mode when the caller doesn't specify one.
+        //     let mode = settings.mode.unwrap_or(BootSourceOverrideMode::UEFI);
+        //     boot_data.insert(
+        //         "BootSourceOverrideMode".to_string(),
+        //         mode.to_string().into(),
+        //     );
+        //     if let Some(uri) = settings.http_boot_uri {
+        //         boot_data.insert("HttpBootUri".to_string(), uri.into());
+        //     }
+        //     let url = format!("Systems/{}", self.s.system_id());
+        //     self.s
+        //         .client
+        //         .patch_with_if_match(&url, HashMap::from([("Boot", boot_data)]))
+        //         .await?;
+        //     Ok(None)
+        // })
     }
 
     /// AMI BMC requires If-Match header for boot order changes
@@ -777,9 +819,10 @@ impl Redfish for Bmc {
     /// Set the DPU (identified by MAC address) as the first boot option.
     fn set_boot_order_dpu_first<'a>(
         &'a self,
-        mac_address: &'a str,
+        boot_interface: crate::BootInterfaceRef<'a>,
     ) -> crate::RedfishFuture<'a, Result<Option<String>, RedfishError>> {
         Box::pin(async move {
+            let mac_address = crate::resolve_boot_interface_mac(self, boot_interface).await?;
             let mac = mac_address.to_uppercase();
             let (system, all_boot_options) = self.get_system_and_boot_options().await?;
 
@@ -819,12 +862,11 @@ impl Redfish for Bmc {
     /// Check if boot order is setup correctly
     fn is_boot_order_setup<'a>(
         &'a self,
-        boot_interface_mac: &'a str,
+        boot_interface: crate::BootInterfaceRef<'a>,
     ) -> crate::RedfishFuture<'a, Result<bool, RedfishError>> {
         Box::pin(async move {
-            let (expected, actual) = self
-                .get_expected_and_actual_first_boot_option(boot_interface_mac)
-                .await?;
+            let mac = crate::resolve_boot_interface_mac(self, boot_interface).await?;
+            let (expected, actual) = self.get_expected_and_actual_first_boot_option(&mac).await?;
             Ok(expected.is_some() && expected == actual)
         })
     }
